@@ -1,0 +1,146 @@
+🛠️ Module 1 : Les fondations (Machines Virtuelles et Linux)
+Avant de conteneuriser, il faut comprendre où tes conteneurs vont vivre, car ton projet doit entièrement tourner sur une machine virtuelle.
+
+Ce qu'il faut comprendre : La différence entre ton ordinateur physique (hôte) et une Machine Virtuelle (invitée). Les bases de la ligne de commande Linux, spécifiquement sur des distributions comme Debian ou Alpine Linux, car tes conteneurs devront obligatoirement être construits sur l'une de ces deux bases.
+
+Où apprendre : Des tutoriels sur l'installation d'une VM Debian (sur VirtualBox par exemple) et les commandes Unix de base. La plateforme OpenClassrooms propose d'excellents cours d'introduction à Linux en français.
+
+🐳 Module 2 : La philosophie Docker (L'art de l'isolation)
+C'est le cœur du projet. Un conteneur n'est absolument pas une machine virtuelle. * Ce qu'il faut comprendre : La différence de fonctionnement entre une VM et un conteneur. Ce qu'est une image (le plan de construction) et un conteneur (l'instance qui tourne). Comment écrire un Dockerfile de zéro, car tu ne pourras pas utiliser d'images toutes prêtes pour tes services (à part la base Alpine/Debian).
+
+Où apprendre : Cherche des articles sur les "Fondamentaux de la conteneurisation". La documentation officielle de Docker est très bien faite, et il existe de nombreux blogs francophones spécialisés comme "Cocadmin" ou "Putain de code" qui vulgarisent très bien ces concepts.
+
+🎼 Module 3 : L'orchestration avec Docker Compose
+Faire tourner un conteneur seul, c'est bien. Faire communiquer plusieurs conteneurs ensemble avec une seule commande, c'est ce qu'on te demande.
+
+Ce qu'il faut comprendre : La syntaxe et l'utilisation du fichier docker-compose.yml. La création d'un réseau ("Network") interne pour que tes services puissent se parler entre eux de manière sécurisée. La différence cruciale entre un "Bind Mount" et un "Docker Volume" nommé, qui sera nécessaire pour sauvegarder ta base de données et tes fichiers de site.
+
+Où apprendre : Des articles comme "Docker Compose : déployer une application multi-conteneurs" sur le blog Le Nid IT sont d'excellentes introductions pratiques.
+
+⚙️ Module 4 : Les services de ta stack
+Tu vas devoir recréer une infrastructure web classique, mais éclatée en plusieurs morceaux isolés. * Ce qu'il faut comprendre :
+* NGINX : Qu'est-ce qu'un serveur web / reverse proxy ? Comment le configurer pour qu'il soit le seul point d'entrée de ton infrastructure sur le port 443, en utilisant uniquement les protocoles de sécurité TLSv1.2 ou TLSv1.3.
+* MariaDB : Comment initialiser une base de données et y créer des utilisateurs spécifiques dès son lancement.
+* WordPress & PHP-FPM : Comment faire tourner le moteur PHP indépendamment du serveur web NGINX.
+
+🛡️ Module 5 : Bonnes pratiques et pièges fatals
+C'est ici que de nombreux étudiants échouent lors des corrections si les concepts ne sont pas bien saisis.
+
+Ce qu'il faut comprendre : Le concept fondamental du processus principal ("PID 1") dans Docker. Pourquoi maintenir un conteneur en vie avec une boucle infinie (tail -f, sleep infinity) est une très mauvaise pratique. Comment gérer les variables d'environnement via un fichier .env pour ne jamais exposer tes mots de passe en clair dans tes fichiers de configuration.
+
+Où apprendre : Documente-toi spécifiquement sur le thème du "PID 1 Docker" et consulte des ressources communautaires répertoriant les "Bonnes pratiques Docker".
+
+💡 Mes conseils pour réussir ce projet de manière fluide :
+Prends des notes pour ta documentation : Il te sera demandé à la fin de rédiger un fichier README.md comparant les VM aux conteneurs, et les Volumes aux Bind Mounts. Note tes apprentissages et tes choix de conception au fur et à mesure que tu étudies le Module 2 et 3.
+
+Construis brique par brique : Ne lance pas tout d'un coup. Rédige le Dockerfile de NGINX en premier et teste-le seul. Ensuite, attaque-toi à MariaDB. Enfin, ajoute WordPress et relie tout ce petit monde.
+
+Sois rigoureux sur l'arborescence : Tes fichiers de configuration devront être dans un dossier srcs précis, et ton Makefile à la racine.
+
+Inspecte tes conteneurs : Apprends très tôt à utiliser les commandes docker logs <nom_du_conteneur> et docker exec -it <nom_du_conteneur> sh pour aller voir de l'intérieur pourquoi un service refuse de démarrer.
+
+/mon_projet_inception
+├── Makefile
+├── srcs/
+│   ├── docker-compose.yml
+│   ├── requirements/
+│   │   ├── mariadb/
+│   │   │   ├── conf/
+│   │   │   ├── tools/
+│   │   │   └── Dockerfile
+│   │   ├── nginx/
+│   │   │   ├── conf/
+│   │   │   ├── tools/
+│   │   │   └── Dockerfile
+│   │   └── wordpress/
+│   │       ├── conf/
+│   │       ├── tools/
+│   │       └── Dockerfile
+└── .gitignore
+
+🐧 1. Les chemins "Système" (Debian)
+Ces chemins te serviront pour tous tes conteneurs.
+
+/var/lib/apt/lists/* : Le cache des catalogues d'installation (comme on vient de le voir). À supprimer à chaque apt-get update dans tes Dockerfiles.
+
+/usr/local/bin/ : Le dossier magique pour tes propres scripts. Si tu places ton script entrypoint.sh ou l'outil wp-cli ici (et que tu fais un chmod +x dessus), tu pourras l'exécuter en tapant simplement son nom de n'importe où, sans avoir à taper le chemin complet.
+
+/etc/hosts : (Attention, celui-ci est sur ta machine physique/VM, pas dans les conteneurs !) C'est le fichier qui gère tes DNS locaux. C'est ici que tu devras ajouter la ligne 127.0.0.1 login.42.fr pour que ton navigateur redirige correctement ton nom de domaine vers ton infrastructure locale.
+
+🌐 2. Les chemins "NGINX"
+/etc/nginx/nginx.conf : Le grand chef d'orchestre. C'est le fichier de configuration principal de NGINX. C'est celui que l'on remplace avec notre COPY dans le Dockerfile.
+
+/var/www/html/ (ou /var/www/wordpress/ selon ton choix) : Le "Document Root". C'est là que NGINX va chercher les pages web (les fichiers PHP ou HTML) à afficher quand un client se connecte.
+
+/var/log/nginx/error.log : Ton meilleur ami pour le débogage. Si NGINX refuse de démarrer ou affiche une page blanche, tu fais un cat de ce fichier, et il t'expliquera exactement à quelle ligne de ton fichier de configuration tu as oublié un point-virgule.
+
+🐬 3. Les chemins "MariaDB" (Base de données)
+/etc/mysql/mariadb.conf.d/50-server.cnf : Le fichier de configuration où tu vas indiquer à MariaDB d'écouter sur le port 3306 et d'accepter les connexions réseau (bind-address = 0.0.0.0 ou *).
+
+/var/lib/mysql/ : Le coffre-fort. C'est dans ce dossier que MariaDB écrit physiquement toutes les données de ta base de données sur le disque dur. C'est exactement ce chemin que le sujet te demande d'exporter en "Volume" pour ne pas perdre tes données si le conteneur plante !
+
+/run/mysqld/ : Le dossier où MariaDB crée son fichier .sock pour communiquer en interne. Parfois, le dossier n'existe pas par défaut, il faut alors rajouter un mkdir -p /run/mysqld dans ton script de démarrage.
+
+🐘 4. Les chemins "WordPress & PHP"
+/etc/php/8.2/fpm/pool.d/www.conf : (Note: la version 8.2 dépend de si tu utilises Debian Bookworm. Si tu utilises Buster comme le vieux tuto, ce sera 7.3). C'est le fichier où tu dois dire à PHP-FPM d'écouter sur le port 9000 pour pouvoir recevoir les requêtes de NGINX.
+
+/run/php/ : Tout comme MariaDB, PHP-FPM a besoin de ce dossier de processus pour démarrer correctement. Il est très fréquent de devoir rajouter un mkdir -p /run/php dans le script d'entrée de ton conteneur WordPress.
+
+Le conseil en or : Note précieusement le chemin /var/lib/mysql/ (pour la base de données) et ton chemin /var/www/wordpress/ (pour les fichiers de ton site web). Ce sont les deux "Variables X et Y" dont tu vas avoir besoin pour résoudre l'équation du Module 3 : la création des Volumes dans le docker-compose. Ml.
+
+Cours:
+
+Dockerfile:
+FROM debian:bookworm
+# Définit l'OS de base.
+
+RUN apt-get update -y && apt-get install ... -y && rm -rf /var/lib/apt/lists/*
+# S'exécute à la CRÉATION de l'image. Installe les paquets et nettoie le cache.
+
+COPY <chemin_fichier_sur_mon_pc> <chemin_destination_dans_le_conteneur>
+# Copie tes scripts ou fichiers de configuration depuis ton ordinateur vers le conteneur.
+
+EXPOSE <port>
+# Purement informatif. Indique sur quel port le programme écoute en interne.
+
+CMD ["executable", "parametre1", "parametre2"] 
+# OU
+ENTRYPOINT ["/chemin/vers/mon/script.sh"]
+# S'exécute au DÉMARRAGE du conteneur. C'est le processus principal (PID 1) qui maintient le conteneur en vie.
+
+
+Basic commands Docker:
+
+Construire et allumer l'infrastructure (en arrière-plan) :
+docker-compose -f srcs/docker-compose.yml up -d --build
+
+Éteindre et tout détruire proprement (y compris les disques durs virtuels) :
+docker-compose -f srcs/docker-compose.yml down -v
+
+Éteindre temporairement (sans détruire) :
+docker-compose -f srcs/docker-compose.yml stop
+
+Voir qui est en vie (les conteneurs qui tournent) :
+docker ps
+
+Voir tout le monde (même les conteneurs qui ont planté) :
+docker ps -a
+
+Lire le rapport de crash (les logs d'erreur) d'un service :
+docker logs nginx
+docker logs mariadb
+docker logs wordpress
+
+Entrer physiquement à l'intérieur d'un conteneur en vie :
+docker exec -it nginx bash
+docker exec -it mariadb bash
+docker exec -it wordpress bash
+
+Supprimer tout ce qui est inutile (images ratées, caches, vieux réseaux) :
+docker system prune -af
+
+
+nginx -> Nginx, prononcé comme « engine-ex », est un serveur web open-source qui, depuis son succès initial en tant que serveur web, est maintenant aussi utilisé comme reverse proxy, cache HTTP, et load balancer.Nginx est conçu pour offrir une faible utilisation de la mémoire et une grande simultanéité. Plutôt que de créer de nouveaux processus pour chaque requête Web, Nginx utilise une approche asynchrone et événementielle où les requêtes sont traitées dans un seul thread.
+Avec Nginx, un processus maître peut contrôler plusieurs processus de travailleurs. Le maître gère les processus du travailleur, tandis que les travailleurs effectuent le traitement proprement dit. Comme Nginx est asynchrone, chaque requête peut être exécutée simultanément par le travailleur sans bloquer les autres requêtes.
+
+mariadb ->
