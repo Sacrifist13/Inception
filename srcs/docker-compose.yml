@@ -26,8 +26,8 @@ services:
       - wordpress_data:/var/www/wordpress
     networks:
       - inception_network
-    depends_on:
-      - mariadb
+    # depends_on:
+    #   - mariadb
     restart: always
 
   wordpress:
