@@ -34,7 +34,8 @@ Avant de conteneuriser, il faut un environnement sain.
     * **RAM :** 2 Go.
     * **CPU :** 6 Processeurs.
     * **Disque :** 20 Go.
-* **L'installation :** ```bash
+* **L'installation :** 
+    ```bash
     sudo apt-get install docker.io docker-compose
     ```
 * **Le piège du sudo :** Pour éviter de taper `sudo` à chaque commande, on ajoute l'utilisateur au groupe Docker.
