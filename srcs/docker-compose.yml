@@ -2,6 +2,7 @@ version: '3'
 
 networks:
   inception_network:
+    driver: bridge
 
 services:
   mariadb:
@@ -26,8 +27,9 @@ services:
       - wordpress_data:/var/www/wordpress
     networks:
       - inception_network
-    # depends_on:
-    #   - mariadb
+    depends_on:
+      - mariadb
+      - wordpress
     restart: always
 
   wordpress:
