@@ -247,3 +247,57 @@ docker system prune -af</code></pre>
   <i>"One container is not enough. We need to go deeper."</i><br>
   <b>Projet Inception</b>
 </p>
+
+🕵️ 1. L'inspection des Ports (La règle d'or de NGINX)
+Le sujet exige que NGINX soit le seul point d'entrée de ton infrastructure. L'évaluateur va vérifier que tu n'as pas accidentellement ouvert les ports de la base de données au reste du monde.
+
+La commande : docker ps
+
+Ce qu'il faut regarder : * Sur la ligne de nginx, dans la colonne "PORTS", tu dois voir 0.0.0.0:443->443/tcp. Cela veut dire que le port 443 de ton PC est relié au conteneur.
+
+Sur les lignes de mariadb et wordpress, tu ne dois absolument pas voir de 0.0.0.0 ! Leurs ports (3306 et 9000) ne doivent être ouverts qu'en interne.
+
+💀 2. Le test anti-triche (Le PID 1 et l'OS)
+L'évaluateur va vérifier si tu as utilisé des rustines interdites (tail -f, sleep infinity, bash) pour maintenir tes conteneurs en vie.
+
+La commande PID : docker exec -it nginx ps aux (à faire aussi sur mariadb et wordpress).
+
+Ce qu'il faut regarder : La toute première ligne du résultat (celle qui a le PID numéro 1) DOIT être le programme officiel (nginx, mariadbd ou php-fpm). Si c'est écrit /bin/bash ou sleep, tu as un zéro direct.
+
+La commande OS : docker exec -it nginx cat /etc/os-release
+
+Ce qu'il faut regarder : Cela affichera "Debian GNU/Linux 12 (bookworm)", ce qui prouve à l'évaluateur que tu as bien utilisé l'avant-dernière version stable comme exigé.
+
+🔄 3. Le "Crash Test" (La résilience)
+Le sujet stipule : "Vos conteneurs doivent redémarrer en cas de crash". L'évaluateur va essayer de détruire un service pour voir comment ton Docker réagit.
+
+La commande : docker kill mariadb (Cette commande assassine le conteneur de manière brutale).
+
+La vérification : Tape immédiatement docker ps. Tu verras que MariaDB est toujours là, mais que sa colonne "STATUS" indiquera Up 2 seconds (au lieu de 10 minutes pour les autres). Cela prouve que Docker a détecté le crash et a automatiquement relancé la base de données !
+
+📂 4. L'inspection des Volumes (Le paradoxe résolu)
+Le correcteur va vérifier ta fameuse "entourloupe" des Named Volumes et tester la persistance.
+
+L'inspection Docker : docker volume ls (pour montrer qu'ils existent) puis docker volume inspect mariadb_data. Tu pourras lui montrer fièrement la ligne "Device": "/home/kkraft/data/mariadb" pour prouver que tu respectes la règle des Named Volumes ET du stockage local.
+
+Le test de persistance : 1. Va dans ton vrai dossier physique : cd /home/kkraft/data/wordpress et crée un fichier texte bidon : touch hack.txt.
+2. Va à l'intérieur de ton conteneur : docker exec -it wordpress ls /var/www/wordpress.
+3. Le fichier hack.txt apparaîtra dans le terminal du conteneur. Tu viens de prouver que le pont physique existe bien.
+
+👥 5. La vérification WordPress / Base de données
+Le sujet exige deux utilisateurs dans la base de données, dont un administrateur ne s'appelant pas "admin".
+
+Le test rapide depuis le terminal : Tu peux utiliser WP-CLI directement depuis l'extérieur du conteneur pour lister les utilisateurs et prouver que tes variables d'environnement ont bien fonctionné !
+
+La commande : docker exec -it wordpress wp user list --allow-root
+
+Le résultat attendu : Un tableau propre s'affichera dans ton terminal montrant tes deux utilisateurs (ton boss et ton auteur) avec leurs rôles respectifs.
+
+🧹 6. Le bouton Nucléaire (Le Makefile)
+En fin de soutenance, on te demandera de prouver que ton projet peut s'effacer totalement.
+
+La commande : make fclean
+
+La vérification : Après l'exécution, tape docker ps -a (il ne doit plus rien avoir), docker images (vide), et docker volume ls (vide).
+
+Si tu maîtrises l'explication de ces quelques commandes docker exec, docker ps, et docker volume, tu donneras l'image d'un étudiant qui contrôle parfaitement son infrastructure et qui ne s'est pas contenté de copier-coller des tutoriels. Tu as toutes les clés en main !
